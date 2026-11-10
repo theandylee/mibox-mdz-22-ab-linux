@@ -1,0 +1,28 @@
+.venv/
+# third-party tooling fetched by flash-tools/setup.sh
+flash-tools/pyaml/
+flash-tools/khadas/
+flash-tools/logs/
+# kernel tree + build products
+kernel/linux-6.12.114/
+kernel/linux-6.12.114.tar.xz
+kernel/modroot/
+kernel/nk/init
+kernel/nk/init.stripped
+kernel/nk/rd.cpio.gz
+kernel/nk/Image.gz
+kernel/*.log
+# per-box / downloaded / generated
+kernel/macs.env
+arch-work/*.tar.gz
+arch-work/*.md5
+arch-work/pkgcache/
+arch-work/fw43456/
+userdata-work/
+recovery-work/*.img
+misc-work/
+backup-emmc/
+# you must supply these (see README)
+ota-bootloader.img
+password/
+recovery-backup.img
