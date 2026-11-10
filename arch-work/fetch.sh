@@ -2,7 +2,7 @@
 # Downloads everything the Arch image build needs into arch-work/ (idempotent; verifies the tarball md5).
 set -eu
 cd "$(dirname "$0")"
-ALARM=http://os.archlinuxarm.org/aarch64
+ALARM=http://os.archlinuxarm.org
 get() { [ -s "$2" ] || { echo "fetch $2"; curl -fsSL -o "$2.part" "$1" && mv "$2.part" "$2"; }; }
 get $ALARM/os/ArchLinuxARM-aarch64-latest.tar.gz ArchLinuxARM-aarch64-latest.tar.gz
 get $ALARM/os/ArchLinuxARM-aarch64-latest.tar.gz.md5 ArchLinuxARM-aarch64-latest.tar.gz.md5
