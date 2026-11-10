@@ -68,8 +68,12 @@ chmod 600 "$R/etc/shadow"; unset HASH
 ln -sf /usr/share/zoneinfo/UTC "$R/etc/localtime"
 mkdir -p "$R/etc/ssh/sshd_config.d"; printf 'PermitRootLogin yes\nPasswordAuthentication yes\n' > "$R/etc/ssh/sshd_config.d/10-root.conf"
 mkdir -p "$R/etc/modules-load.d"; printf 'brcmfmac\n' > "$R/etc/modules-load.d/wifi.conf"
-# iwd: built-in DHCP, systemd-resolved for DNS
-mkdir -p "$R/etc/iwd"; printf '[General]\nEnableNetworkConfiguration=true\n[Network]\nNameResolvingService=systemd\n' > "$R/etc/iwd/main.conf"
+# networking: iwd only handles Wi-Fi association; systemd-networkd does DHCP and reports the "online" state that
+# systemd-timesyncd waits for (with iwd's own DHCP networkd says ONLINE_STATE=offline and NTP never starts); DNS via systemd-resolved
+mkdir -p "$R/etc/iwd" "$R/etc/systemd/network"; printf '[Network]\nNameResolvingService=systemd\n' > "$R/etc/iwd/main.conf"
+printf '[Match]\nName=wl*\n\n[Network]\nDHCP=yes\nIPv6AcceptRA=yes\n\n[Link]\nRequiredForOnline=degraded\n' > "$R/etc/systemd/network/20-wlan.network"
+# this box has no wired port: don't let network-online wait for the (carrier-less) ethernet interface
+for f in en eth; do [ -f "$R/etc/systemd/network/$f.network" ] && printf '\n[Link]\nRequiredForOnline=no\n' >> "$R/etc/systemd/network/$f.network"; done
 mkdir -p "$R/var/lib/iwd"
 if printf '%s' "$SSID" | grep -qE '^[A-Za-z0-9_ -]+$'; then FN="$SSID.psk"; else FN="=$(printf '%s' "$SSID" | od -An -tx1 | tr -d ' \n').psk"; fi
 printf '[Security]\nPassphrase=%s\n' "$WPW" > "$R/var/lib/iwd/$FN"; chmod 600 "$R/var/lib/iwd/$FN"; chmod 700 "$R/var/lib/iwd"; unset WPW
@@ -78,8 +82,8 @@ rm -f "$R/etc/resolv.conf"; ln -s ../run/systemd/resolve/stub-resolv.conf "$R/et
 S=/usr/lib/systemd/system; WT="$R/etc/systemd/system/multi-user.target.wants"; mkdir -p "$WT" "$R/etc/systemd/system/sockets.target.wants"
 mkdir -p "$R/etc/systemd/system/bluetooth.target.wants"; ln -sf $S/bluetooth.service "$R/etc/systemd/system/bluetooth.target.wants/bluetooth.service"; ln -sf $S/bluetooth.service "$R/etc/systemd/system/dbus-org.bluez.service"
 for u in sshd iwd systemd-resolved systemd-timesyncd; do [ -e "$R$S/$u.service" ] && ln -sf "$S/$u.service" "$WT/$u.service" || echo "NOTE: $u.service missing"; done
-# no network setup wait stalls; keep networkd/dhcpcd off (iwd does DHCP)
-rm -f "$WT"/{systemd-networkd,dhcpcd}.service
+# networkd on (tarball default, DHCP for wlan0 above); dhcpcd off
+ln -sf $S/systemd-networkd.service "$WT/systemd-networkd.service"; rm -f "$WT/dhcpcd.service"
 # first boot: arch keyring init so pacman works
 mkdir -p "$R/etc/systemd/system"; sed -i 's/^#\?IgnorePkg.*/IgnorePkg = linux-aarch64 linux-aarch64-headers/' "$R/etc/pacman.conf"; grep -q '^IgnorePkg' "$R/etc/pacman.conf" || sed -i '/^\[options\]/a IgnorePkg = linux-aarch64 linux-aarch64-headers' "$R/etc/pacman.conf"
 cat > "$R/etc/systemd/system/pacman-keyinit.service" <<'U'
