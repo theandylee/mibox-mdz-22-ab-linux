@@ -93,7 +93,7 @@ sudo bash stick-setup/build-arch-userdata.sh        # asks hostname, root passwo
 ```
 
 Non-interactive: `HN=mibox ROOTPW=... WIFI_SSID=... WIFI_PSK=... sudo -E bash stick-setup/build-arch-userdata.sh`. Extra packages: `PKGS="iwd bluez bluez-utils vim" ...`.
-Output: `userdata-work/userdata-arch.img` (2 GiB ext4, UUID fixed, label ALARM). It contains the extracted tarball, `iwd` (DHCP + Wi-Fi profile), `bluez`/`bluez-utils`
+Output: `userdata-work/userdata-arch.img` (2 GiB ext4, UUID fixed, label ALARM). It contains the extracted tarball, `iwd` (Wi-Fi association + profile) with `systemd-networkd` doing DHCP, `bluez`/`bluez-utils`
 (service enabled), `sshd` (root login with password enabled), `systemd-resolved`, `systemd-timesyncd`, the Broadcom firmware, our modules, and a first-boot pacman keyring init.
 One `call to execv failed (Exec format error)` near the end is pacman trying to run the aarch64 `ldconfig` on the PC and is harmless.
 
@@ -126,6 +126,7 @@ bluetoothctl                      # power on / scan on
 
 * **Wi-Fi: no `wlan0`:** `dmesg | grep brcmfmac`; the log should name `brcm/brcmfmac43456-sdio.*` firmware; it must exist in `/usr/lib/firmware/brcm/`.
 * **Bluetooth: `bluetoothctl list` empty:** `dmesg | grep hci0`; needs `BCM4345C5.hcd` and a real address (macs.env). `strace -f -o /tmp/t bluetoothd -n` shows the failing syscall.
+* **Clock wrong / TLS errors:** there is no RTC; `timesyncd` sets the time once `networkd` reports the network online (`grep ONLINE /run/systemd/netif/state`, `timedatectl timesync-status`). Wi-Fi DHCP must be done by networkd (`20-wlan.network`), not by iwd.
 * **pacman: Landlock error:** kernel without `CONFIG_SECURITY_LANDLOCK`; temporary workaround `pacman --disable-sandbox`.
 * **`pacman -Syu` and the kernel:** `linux-aarch64` is on `IgnorePkg`; the kernel is the `recovery` partition image, not a package. Never `pacman -S linux-aarch64`.
 * **Nothing on screen / wrong mode:** command line forces `video=HDMI-A-1:1920x1080@60e` (edit in `kernel/build.sh`).
